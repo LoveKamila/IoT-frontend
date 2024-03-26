@@ -11,6 +11,8 @@ from flask import request
 import pandas as pd
 import numpy as np
 
+from dateutil.parser import parse
+
 from flask_cors import CORS
 
 app = Flask(__name__, static_url_path='/s',
@@ -559,25 +561,31 @@ def query_data():
     """
     pageNum = request.args.get('pageNum', default=1, type=int)  # 获取当前页数，默认为第一页
     pageSize = request.args.get('pageSize', default=10, type=int)  # 获取每页数据条数，默认为10条
+    id = request.args.get('id', default=None, type=int)  # 获取设备ID，默认为None
+    startDate = request.args.get('startDate', default=None)
+    endDate = request.args.get('endDate', default=None)
 
-    # startDate = request.args.get('startDate', default=None)
-    # endDate = request.args.get('endDate', default=None)
+    # 构建查询
+    query_result = WaterData.query
+
+    if id is not None:
+        query_result = query_result.filter(WaterData.id == id)
 
     # 查询总数据条数
-    total_count = WaterData.query.count()
+    total_count = query_result.count()
 
     # 如果提供了开始日期和结束日期，则根据日期范围进行查询
-    # if startDate and endDate:
-    #     start_date = datetime.strptime(startDate, '%Y-%m-%d')
-    #     end_date = datetime.strptime(endDate, '%Y-%m-%d')
-    #     query_result = query_result.filter(WaterData.datetime.between(start_date, end_date))
+    if startDate is not None and endDate is not None:
+        start_date = parse(startDate)
+        end_date = parse(endDate)
+        query_result = query_result.filter(WaterData.datetime.between(start_date, end_date))
 
     # 计算起始索引和结束索引
     start_index = (pageNum - 1) * pageSize
     end_index = min(start_index + pageSize, total_count)
 
     # 查询当前页的数据
-    query_result = WaterData.query.offset(start_index).limit(pageSize).all()
+    query_result = query_result.offset(start_index).limit(pageSize).all()
 
     res = query2dict(query_result)
     res_convert = []
